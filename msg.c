@@ -30,7 +30,8 @@
 #include <openssl/sha.h>
 #include <syslog.h>
 #include "server.h"
-#include "scrypt.h"
+//#include "scrypt.h"
+#include "scrypt-jane.h"
 
 struct worker {
 	char			username[64 + 1];
@@ -345,6 +346,41 @@ static int hash_greater_target(const unsigned char *hash, const unsigned char *t
 	return 0;
 }
 
+// yacoin: increasing Nfactor gradually
+const unsigned char minNfactor = 4;
+const unsigned char maxNfactor = 30;
+
+unsigned char GetNfactor(unsigned int nTimestamp) {
+    int l = 0;
+
+    if (nTimestamp <= 1367991200)
+        return 4;
+
+    unsigned long int s = nTimestamp - 1367991200;
+    while ((s >> 1) > 3) {
+      l += 1;
+      s >>= 1;
+    }
+
+    s &= 3;
+
+    int n = (l * 170 + s * 25 - 2320) / 100;
+
+    if (n < 0) n = 0;
+
+    if (n > 255)
+        printf("GetNfactor(%d) - something wrong(n == %d)\n", nTimestamp, n);
+
+    unsigned char N = (unsigned char)n;
+    //printf("GetNfactor: %d -> %d %d : %d / %d\n", nTimestamp - nChainStartTime, l, s, n, min(max(N, minNfactor), maxNfactor));
+
+//    return min(max(N, minNfactor), maxNfactor);
+
+    if(N<minNfactor) return minNfactor;
+    if(N>maxNfactor) return maxNfactor;
+    return N;
+}
+
 static int check_hash(const char *remote_host, const char *auth_user,
 		      const char *data_str, const char **reason_out)
 {
@@ -353,6 +389,7 @@ static int check_hash(const char *remote_host, const char *auth_user,
 	uint32_t *data32 = (uint32_t *) data;
 	bool rc, better_hash = false;
 	int i;
+	unsigned int nfactor;
 
 	rc = hex2bin(data, data_str, sizeof(data));
 	if (!rc) {
@@ -373,7 +410,11 @@ static int check_hash(const char *remote_host, const char *auth_user,
 	SHA256(data, 80, hash1);
 	SHA256(hash1, SHA256_DIGEST_LENGTH, hash);
 #else
-	scrypt_1024_1_1_256(data, hash);
+	//scrypt_1024_1_1_256(data, hash);
+	nfactor=GetNfactor(data[17]);
+    scrypt((unsigned char *)data, 80,
+           (unsigned char *)data, 80,
+            nfactor, 0, 0, (unsigned char *)hash, 32);
 #endif
 
 	if (srv.easy_target) {
