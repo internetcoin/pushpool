@@ -1,4 +1,6 @@
-bitcoin push-mining pool server.
+yacoin push-mining pool server.
+
+yacoin adoptation donations: YKx94hFM1MjeEBdYAfBK6tufHXVpF2m2NX
 
 Dependencies:
 	libevent		Event-driven async I/O
