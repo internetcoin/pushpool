@@ -411,7 +411,7 @@ static int check_hash(const char *remote_host, const char *auth_user,
 	SHA256(hash1, SHA256_DIGEST_LENGTH, hash);
 #else
 	//scrypt_1024_1_1_256(data, hash);
-	nfactor=GetNfactor(data[17]);
+	nfactor=GetNfactor(data32[17]);
     scrypt((unsigned char *)data, 80,
            (unsigned char *)data, 80,
             nfactor, 0, 0, (unsigned char *)hash, 32);
